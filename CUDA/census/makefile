@@ -2,8 +2,8 @@
 NV = nvcc
 
 
-POST = ../../libs
-PGM = ../../../libs
+POST = ../libs
+PGM = ../../libs
 CUDA_LIBS = /usr/local/cuda-8.0/lib64/
 
 # compile mesh classes
