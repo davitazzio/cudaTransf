@@ -23,8 +23,6 @@ void Census(const GPUDevice& d,
                  typename TTypes<float, 4>::ConstTensor input_0,
                  typename TTypes<float, 4>::ConstTensor input_1,
                  typename TTypes<float, 4>::Tensor output,
-                 typename TTypes<float, 4>::Tensor padded_0,
-                 typename TTypes<float, 4>::Tensor padded_1,
                  CensusAttrs params);
 
 class CensusOp : public OpKernel {
@@ -47,27 +45,16 @@ public:
     const int in_height = input_0_data.dimension(2);
     const int in_width = input_0_data.dimension(3);
 
-    OP_REQUIRES(context, st.out_width * st.out_height > 0,
-                errors::InvalidArgument("Invalid correlation settings"));
-
+    const int out_channels = 1;
+    const int out_height = in_height;
+    const int out_width  = in_width;
     Tensor* output = NULL;
-    TensorShape output_shape({batch, st.out_channels, st.out_height, st.out_width});
+
+    TensorShape output_shape({batch, out_channels, out_height, out_width});
     OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
 
-    Tensor* padded_0 = NULL;
-    Tensor* padded_1 = NULL;
-    TensorShape padded_shape({batch, st.padded_height, st.padded_width, in_channels});
-    OP_REQUIRES_OK(context, context->allocate_output(1, padded_shape, &padded_0));
-    OP_REQUIRES_OK(context, context->allocate_output(2, padded_shape, &padded_1));
-
     typename TTypes<float, 4>::Tensor output_data = output->tensor<float, 4>();
-    typename TTypes<float, 4>::Tensor padded_0_data = padded_0->tensor<float, 4>();
-    typename TTypes<float, 4>::Tensor padded_1_data = padded_1->tensor<float, 4>();
-
-    Correlation2D(context->eigen_device<GPUDevice>(),
-                input_0_data, input_1_data, output_data,
-                padded_0_data, padded_1_data,
-                st);
+    Census(context->eigen_device<GPUDevice>(), input_0_data, input_1_data, output_data,st);
   }
 
 private:
@@ -92,8 +79,10 @@ REGISTER_OP("Census")
 
     int out_channels = 1;
 
-    // TODO: support passing on output width and height
-
     c->set_output(0, c->MakeShape({batch, out_channels, c->UnknownDim(), c->UnknownDim()}));
     return Status::OK();
   });
+
+#if GOOGLE_CUDA
+REGISTER_KERNEL_BUILDER(Name("Census").Device(DEVICE_GPU), CensusOp);
+#endif 

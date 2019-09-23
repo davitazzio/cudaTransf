@@ -10,7 +10,7 @@ struct CensusAttrs {
     OP_REQUIRES_OK(c, c->GetAttr("ndisp", &ndisp));
     OP_REQUIRES_OK(c, c->GetAttr("wsize", &wsize));
   }
-  
+
   CensusAttrs() {}
   int ndisp;
   int wsize;
