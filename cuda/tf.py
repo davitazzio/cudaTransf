@@ -64,4 +64,4 @@ for n in OP_NAMES:
 os.chdir(cwd)
 
 def census(first, second, **kwargs):
-    return _census_module.correlation2d(first, second, **kwargs)[0]
+    return _census_module.census(first, second, **kwargs)[0]
