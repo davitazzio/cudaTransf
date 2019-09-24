@@ -20,10 +20,10 @@ typedef Eigen::GpuDevice GPUDevice;
 using namespace tensorflow;
 
 void Census(const GPUDevice& d,
-                 typename TTypes<float, 4>::ConstTensor input_0,
-                 typename TTypes<float, 4>::ConstTensor input_1,
-                 typename TTypes<float, 4>::Tensor output,
-                 CensusAttrs params);
+                 typename TTypes<float, 3>::ConstTensor input_0,
+                 typename TTypes<float, 3>::ConstTensor input_1,
+                 typename TTypes<float, 3>::Tensor output,
+                 CensusState params);
 
 class CensusOp : public OpKernel {
 public:
@@ -37,24 +37,39 @@ public:
     OP_REQUIRES(context, input_0.shape() == input_1.shape(),
                 errors::InvalidArgument("Input shapes have to be the same"));
 
-    typename TTypes<float, 4>::ConstTensor input_0_data = input_0.tensor<float, 4>();
-    typename TTypes<float, 4>::ConstTensor input_1_data = input_1.tensor<float, 4>();
-
-    const int batch = input_0_data.dimension(0);
+    typename TTypes<float, 3>::ConstTensor imgl_d = input_0.tensor<float, 3>();
+    typename TTypes<float, 3>::ConstTensor imgr_d = input_1.tensor<float, 3>();
+   
     const int in_channels = input_0_data.dimension(1);
     const int in_height = input_0_data.dimension(2);
     const int in_width = input_0_data.dimension(3);
+    
+    CensusState st(attrs, in_height, in_width, in_channels);
 
-    const int out_channels = 1;
-    const int out_height = in_height;
-    const int out_width  = in_width;
+    OP_REQUIRES(context, st.out_width * st.out_height > 0,
+                errors::InvalidArgument("Invalid census settings"));
+
     Tensor* output = NULL;
+    Tensor* census_l = NULL;
+    Tensor* census_r = NULL;
+    Tensor* padded_imgl_d = NULL;
+    Tensor* padded_imgr_d = NULL;
 
-    TensorShape output_shape({batch, out_channels, out_height, out_width});
+    TensorShape output_shape({out_channels, out_height, out_width});
     OP_REQUIRES_OK(context, context->allocate_output(0, output_shape, &output));
 
-    typename TTypes<float, 4>::Tensor output_data = output->tensor<float, 4>();
-    Census(context->eigen_device<GPUDevice>(), input_0_data, input_1_data, output_data,st);
+    TensorShape padded_shape({batch, st.padded_height, st.padded_width, in_channels});
+    OP_REQUIRES_OK(context, context->allocate_output(1, padded_shape, &padded_imgl_d));
+    OP_REQUIRES_OK(context, context->allocate_output(2, padded_shape, &padded_imgr_d));
+    OP_REQUIRES_OK(context, context->allocate_output(3, padded_shape, &census_l));
+    OP_REQUIRES_OK(context, context->allocate_output(4, padded_shape, &census_r));
+
+    typename TTypes<float, 3>::Tensor output_data = output->tensor<float, 3>();
+    typename TTypes<float, 3>::Tensor padded_imgl_data = padded_imgl_d->tensor<float, 3>();
+    typename TTypes<float, 3>::Tensor padded_imgr_data = padded_imgr_d->tensor<float, 3>();
+    typename TTypes<float, 3>::Tensor census_l_data = census_l->tensor<float, 3>();
+    typename TTypes<float, 3>::Tensor census_r_data = census_r->tensor<float, 3>();
+    Census(context->eigen_device<GPUDevice>(), imgl_d, imgr_d, padded_imgl_data, padded_imgr_data, census_l_data, census_r_data, output_data, st);
   }
 
 private:
@@ -69,11 +84,13 @@ REGISTER_OP("Census")
   .Input("input_1: float")
   .Attr("ndisp: int = 256")
   .Attr("wsize: int = 9")
+  .Attr("pad: int=4")
   .Output("census: float")
   .SetShapeFn([](shape_inference::InferenceContext* c) {
     CensusAttrs attrs;
     c->GetAttr("ndisp", &attrs.ndisp);
     c->GetAttr("wsize", &attrs.wsize);
+    c->GetAttr("pad", &attr.pad);
 
     DimensionHandle batch = c->Dim(c->input(0), 0);
 
