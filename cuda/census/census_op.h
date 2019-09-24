@@ -32,7 +32,7 @@ struct CensusState {
   CensusState(CensusAttrs attrs, int in_height, int in_width) {
     pad_size = attrs.pad_size;
     wsize = attrs.wsize;
-
+    ndisp = attrs.ndisp;
     kernel_radius = (wsize -1) / 2 ;
     padded_height = in_height + 2 * pad_size;
     padded_width = in_width + 2 * pad_size;
@@ -47,6 +47,7 @@ struct CensusState {
 		  vecsize += 64-(vecsize&63);
 	  tchuncks = vecsize/64;   
   }
+  int ndisp;
   int pad_size;
   int wsize;
   int padded_height;
