@@ -1,6 +1,8 @@
 *.txt
 *.sh
-*.png
+cost.png
+result.png
 *.so
 census
 *.o
+*.pyc

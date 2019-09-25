@@ -20,10 +20,10 @@ typedef Eigen::GpuDevice GPUDevice;
 using namespace tensorflow;
 
 void Census(const GPUDevice& d,
-                 typename TTypes<float, 3>::ConstTensor input,
-                  typename TTypes<float, 3>::Tensor padded_input,
-                 typename TTypes<float, 3>::Tensor output,
-                 CensusState params);
+                typename TTypes<float, 3>::ConstTensor input,
+                typename TTypes<float, 3>::Tensor padded_input,
+                typename TTypes<uint64, 3>::Tensor output,
+                CensusState params);
 
 class CensusOp : public OpKernel {
 public:
@@ -32,10 +32,8 @@ public:
 
   void Compute(OpKernelContext* context) override {
     const Tensor& input_0 = context->input(0);
-
     typename TTypes<float, 3>::ConstTensor input_data = input_0.tensor<float, 3>();
-    
-    const int batch = 0;
+
     const int in_height = input_data.dimension(0);
     const int in_width = input_data.dimension(1);
     const int in_channels = input_data.dimension(2);
@@ -58,7 +56,7 @@ public:
     OP_REQUIRES_OK(context, context->allocate_output(1, padded_shape, &padded_input));
 
     typename TTypes<float, 3>::Tensor padded_input_data = padded_input->tensor<float, 3>();
-    typename TTypes<float, 3>::Tensor output_data = output->tensor<float, 3>();
+    typename TTypes<uint64, 3>::Tensor output_data = output->tensor<uint64, 3>();
     Census(context->eigen_device<GPUDevice>(), input_data, padded_input_data, output_data, st);
   }
 
@@ -74,7 +72,8 @@ REGISTER_OP("Census")
   .Attr("ndisp: int = 256")
   .Attr("wsize: int = 9")
   .Attr("pad: int=4")
-  .Output("census: float")
+  .Output("output: uint64")
+  .Output("padded_input: float")
   .SetShapeFn([](shape_inference::InferenceContext* c) {
     CensusAttrs attrs;
     c->GetAttr("ndisp", &attrs.ndisp);
@@ -82,10 +81,14 @@ REGISTER_OP("Census")
     c->GetAttr("pad", &attrs.pad_size);
 
     DimensionHandle batch = c->Dim(c->input(0), 0);
+    
+    int vecsize =attrs.wsize * attrs.wsize;
+	  if(vecsize%64 > 0)
+		  vecsize += 64-(vecsize&63);
+	  int tchuncks = vecsize/64; 
+    int out_channels = tchuncks*64;
 
-    int out_channels = 1;
-
-    c->set_output(0, c->MakeShape({batch, out_channels, c->UnknownDim(), c->UnknownDim()}));
+    c->set_output(0, c->MakeShape({c->UnknownDim(), c->UnknownDim(), out_channels}));
     return Status::OK();
   });
 

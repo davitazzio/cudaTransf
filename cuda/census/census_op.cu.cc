@@ -35,8 +35,8 @@ __global__ void blob_rearrange_kernel2(const Dtype* in, Dtype* out, int num, int
     out[(n*pwidthheight+xypad)*channels + ch] = value;
 }
 
-__global__ void CensusTransformKernel(const float* image, float* census ,int rows, int cols, int wsize, int chunks ){
 
+__global__ void CensusTransformKernel(const float* image, uint64* census ,int rows, int cols, int wsize, int chunks ){
 	const int shift = blockIdx.x*wsize;
     extern __shared__ float cens_slice[];
     int Row = blockIdx.y;
@@ -86,7 +86,7 @@ __global__ void CensusTransformKernel(const float* image, float* census ,int row
 void Census(const GPUDevice& d,
                  typename TTypes<float, 3>::ConstTensor input,
                  typename TTypes<float, 3>::Tensor padded_input,
-                 typename TTypes<float, 3>::Tensor output,
+                 typename TTypes<uint64, 3>::Tensor output,
                  CensusState params) {				
 
     const int wsize = params.wsize;
@@ -117,11 +117,9 @@ void Census(const GPUDevice& d,
     dim3 totalBlocksRearr((bwidthheight-1)/threads_per_block+1, bchannels, bnum);
     const int pwidthheight = (bwidth + 2 * pad_size) * (bheight + 2 * pad_size);
 
-    blob_rearrange_kernel2<float><<<totalBlocksRearr,threads_per_block>>>
-          (input.data(),padded_input.data(),bnum,bchannels,bwidth,bheight,bwidthheight,pad_size,pwidthheight);
-
-    CensusTransformKernel<<<dimGridCens, dimBlockCens,XDIM_MAX_THREADS*sizeof(float)>>>(padded_input.data(), output.data(), height, width, wsize, tchuncks);
-				
+    //blob_rearrange_kernel2<float><<<totalBlocksRearr,threads_per_block>>>
+    //      (input.data(),padded_input.data(),bnum,bchannels,bwidth,bheight,bwidthheight,pad_size,pwidthheight);
+    CensusTransformKernel<<<dimGridCens, dimBlockCens,XDIM_MAX_THREADS*sizeof(float)>>>(input.data(), output.data(), bheight, bwidth, wsize, tchuncks);
 }
 
 #endif  // GOOGLE_CUDA

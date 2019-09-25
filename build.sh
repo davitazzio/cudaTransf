@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e 
 echo "Buildin Census Kernel"
 cd cuda/census
 python tf_ops.py

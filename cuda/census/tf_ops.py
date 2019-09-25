@@ -62,4 +62,4 @@ for n in OP_NAMES:
 os.chdir(cwd)
 
 def census(first, **kwargs):
-    return _census_module.census(first, **kwargs)[0]
+    return _census_module.census(first, **kwargs)[1]

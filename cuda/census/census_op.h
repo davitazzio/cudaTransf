@@ -37,15 +37,15 @@ struct CensusState {
     padded_height = in_height + 2 * pad_size;
     padded_width = in_width + 2 * pad_size;
 
-    out_width = padded_width;
-    out_height = padded_height;
+    out_width = in_width;
+    out_height = in_height;
 
-    out_channels = 1;
 
     vecsize = wsize*wsize;
 	  if(vecsize%64 > 0)
 		  vecsize += 64-(vecsize&63);
-	  tchuncks = vecsize/64;   
+	  tchuncks = vecsize/64; 
+    out_channels = tchuncks*64;
   }
   int ndisp;
   int pad_size;
