@@ -1,3 +1,8 @@
+/*
+Cuda implementation of Census transformation and costs by Kostantinos Batsos 
+Code available at https://github.com/kbatsos/Real-Time-Stereo
+License MIT
+*/
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -7,10 +12,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h> 
-//#include "imgio.hpp"
-//#include "post.cu"
+#include "imgio.hpp"
+#include "post.cu"
 
 #include "census_op.h"
+
 using namespace std;
 typedef uint8_t uint8;
 typedef unsigned int uint32;
@@ -260,7 +266,7 @@ __global__ void inti_cost( float* cost, int rows, int cols, int ndisp,float maxc
 	}
 }
 
-/*
+
 void usage(void){
 	std::cout	<< "Census genmeric CUDA implementation" << std::endl;
 	std::cout	<< "Arguments" << std::endl;
@@ -665,4 +671,3 @@ int main(int argc, char* argv[]){
 
 }
 
-*/

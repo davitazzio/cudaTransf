@@ -43,7 +43,10 @@ public:
     CensusState st(attrs, in_height, in_width);
 
     OP_REQUIRES(context, st.out_width * st.out_height > 0,
-                errors::InvalidArgument("Invalid census settings"));
+                errors::InvalidArgument("Invalid census settings, invalid shapes"));
+
+    OP_REQUIRES(context, ((2*XDIM_Q_THREADS+st.ndisp)*st.tchuncks)*sizeof(uint64)< SHARED_MEMORY, 
+                errors::InvalidArgument("Invalid census settings, larger than shared memory"));
 
     Tensor* output = NULL;
     Tensor* padded_input = NULL;
