@@ -10,7 +10,7 @@ import sys
 from tf_ops import census as cuda_census
 from python.census import census as py_census
 import cv2
-np.set_printoptions(threshold=sys.maxsize)
+#np.set_printoptions(threshold=sys.maxsize)
 
 class CensusTest(tf.test.TestCase):
     def _test_census(self, in0, out=None, **kwargs):

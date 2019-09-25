@@ -27,7 +27,7 @@ __global__ void blob_rearrange_kernel2(const Dtype* in, Dtype* out, int num, int
     Dtype value=in[(n*channels+ch)*widthheight+xy];
 
     __syncthreads();
-
+    printf("X");
     int xpad  = (xy % width + padding);
     int ypad  = (xy / width + padding);
     int xypad = ypad * (width+2*padding) + xpad;
@@ -35,6 +35,19 @@ __global__ void blob_rearrange_kernel2(const Dtype* in, Dtype* out, int num, int
     out[(n*pwidthheight+xypad)*channels + ch] = value;
 }
 
+template <typename Dtype>
+__global__ void create_mock_tensor(const Dtype* in, uint64* out, int height, int width){
+    //printf("THREAD(X,Y,Z):%d %d %d - BLOCK(X,Y,Z):%d %d %d - GRID(X,Y,Z): %d %d %d\n", threadIdx.x, threadIdx.y, threadIdx.z, blockIdx.x, blockIdx.y, blockIdx.z, gridDim.x, gridDim.y, gridDim.z);
+    int Row = blockIdx.y;
+    int Col = blockIdx.x*blockDim.x+ threadIdx.x;
+    int threadId = Row*width + Col;
+    if(Col >= width || Row>= height)
+        return;
+	Dtype value = in[threadId];
+        
+    __syncthreads();
+    out[threadId] = value;
+}
 
 __global__ void CensusTransformKernel(const float* image, uint64* census ,int rows, int cols, int wsize, int chunks ){
 	const int shift = blockIdx.x*wsize;
@@ -87,7 +100,7 @@ void Census(const GPUDevice& d,
                  typename TTypes<float, 3>::ConstTensor input,
                  typename TTypes<float, 3>::Tensor padded_input,
                  typename TTypes<uint64, 3>::Tensor output,
-                 CensusState params) {				
+                 CensusState params) {
 
     const int wsize = params.wsize;
     const int width = params.padded_width;
@@ -96,30 +109,33 @@ void Census(const GPUDevice& d,
     const int pad_size = params.pad_size;
 
     // input shape
-    const int bnum = 0;//input_0.dimension(0);
-    const int bchannels = input.dimension(2);
+    const int bnum = 1;//input_0.dimension(0);
     const int bheight = input.dimension(0);
     const int bwidth = input.dimension(1);
+    const int bchannels = input.dimension(2);
     const int bwidthheight = bwidth * bheight;
     
-    dim3 dimBlockCens(XDIM_MAX_THREADS);
-    float blockx = (float)width / XDIM_MAX_THREADS;
-    dim3 dimGridCens(ceil((float) blockx) + (blockx*wsize)/XDIM_MAX_THREADS ,height-wsize);
+    dim3 dimBlockCens(XDIM_MAX_THREADS);  //max threads TMAX in each block
+    float blockx = (float)width / XDIM_MAX_THREADS; //split the width into B blocks, each of them with TMAX threads
+    dim3 dimGridCens(ceil((float) blockx) + (blockx*wsize)/XDIM_MAX_THREADS ,height-wsize); // create G grids, where G cover image width in x and height in y
 
-	dim3 dimBlock(XDIM_Q_THREADS);
-    dim3 dimGrid(ceil((float)width /XDIM_Q_THREADS), height-wsize);
+	//dim3 dimBlock(XDIM_Q_THREADS);
+    //dim3 dimGrid(ceil((float)width /XDIM_Q_THREADS), height-wsize);
 
-    dim3 argBlock(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 argGrid(ceil((float) width / BLOCK_SIZE),ceil( (float)height/ BLOCK_SIZE));
+    //dim3 argBlock(BLOCK_SIZE, BLOCK_SIZE);
+    //dim3 argGrid(ceil((float) width / BLOCK_SIZE),ceil( (float)height/ BLOCK_SIZE));
 
-    cudaMemset(output.data(), 0, output.size()*sizeof(float));
-    int threads_per_block=16;
-    dim3 totalBlocksRearr((bwidthheight-1)/threads_per_block+1, bchannels, bnum);
-    const int pwidthheight = (bwidth + 2 * pad_size) * (bheight + 2 * pad_size);
+    cudaMemset(output.data(), 0, output.size()*sizeof(uint64));
+    //int threads_per_block=16;
+    //dim3 totalBlocksRearr((bwidthheight-1)/threads_per_block+1, bchannels, bnum);
+    //const int pwidthheight = (bwidth + 2 * pad_size) * (bheight + 2 * pad_size);
 
     //blob_rearrange_kernel2<float><<<totalBlocksRearr,threads_per_block>>>
     //      (input.data(),padded_input.data(),bnum,bchannels,bwidth,bheight,bwidthheight,pad_size,pwidthheight);
-    CensusTransformKernel<<<dimGridCens, dimBlockCens,XDIM_MAX_THREADS*sizeof(float)>>>(input.data(), output.data(), bheight, bwidth, wsize, tchuncks);
+    //CensusTransformKernel<<<dimGridCens, dimBlockCens,XDIM_MAX_THREADS*sizeof(float)>>>(input.data(), output.data(), bheight, bwidth, wsize, tchuncks);
+    
+    dim3 dimGridMock(ceil((float) blockx),height);
+    create_mock_tensor<float><<<dimGridMock, dimBlockCens, XDIM_MAX_THREADS*sizeof(float)>>>(input.data(), output.data(), bheight,bwidth);
 }
 
 #endif  // GOOGLE_CUDA

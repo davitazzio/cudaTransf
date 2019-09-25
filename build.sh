@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e 
-echo "Buildin Census Kernel"
+echo "Building Census Kernel"
 cd cuda/census
 python tf_ops.py
 echo "Cuda Census Kernel compiled"

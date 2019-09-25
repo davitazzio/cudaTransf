@@ -37,7 +37,7 @@ def compile(op=None):
         out, err = subprocess.Popen(['which', 'nvcc'], stdout=subprocess.PIPE).communicate()
         cuda_dir = out.decode().split('/cuda')[0]
 
-        nvcc_cmd = "nvcc -std=c++11 -c -o {} {} {} -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -I " + cuda_dir + " --expt-relaxed-constexpr"
+        nvcc_cmd = "nvcc -std=c++11 -c -o {} {} {} -D GOOGLE_CUDA=1 -x cu -Xcompiler -fPIC -I " + cuda_dir + " --expt-relaxed-constexpr -w"
         nvcc_cmd = nvcc_cmd.format(" ".join([fn_cu_o, fn_cu_cc]), tf_inc, tf_lib)
         subprocess.check_output(nvcc_cmd, shell=True)
         
@@ -62,4 +62,4 @@ for n in OP_NAMES:
 os.chdir(cwd)
 
 def census(first, **kwargs):
-    return _census_module.census(first, **kwargs)[1]
+    return _census_module.census(first, **kwargs)[0]
